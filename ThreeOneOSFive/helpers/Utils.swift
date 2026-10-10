@@ -1,3 +1,4 @@
+import SwiftUI
 import Foundation
 import UIKit
 import Darwin
@@ -206,5 +207,198 @@ enum AppUpdateChecker {
     private static func numericParts(_ version: String) -> [Int] {
         let core = version.split(separator: "-").first.map(String.init) ?? version
         return core.split(separator: ".").compactMap { Int($0.filter(\.isNumber)) }
+    }
+}
+
+struct LabeledRow<Content: View>: View {
+    private let title: String
+    private let content: Content
+
+    init(_ title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(title)
+            Spacer(minLength: 8)
+            content
+                .multilineTextAlignment(.trailing)
+        }
+    }
+}
+
+extension LabeledRow where Content == Text {
+    init(_ title: String, value: String) {
+        self.init(title) { Text(value) }
+    }
+}
+
+struct CompatNavigationStack<Content: View>: View {
+    private let path: Binding<[FileBrowserDestination]>?
+    private let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.path = nil
+        self.content = content()
+    }
+
+    init(path: Binding<[FileBrowserDestination]>, @ViewBuilder content: () -> Content) {
+        self.path = path
+        self.content = content()
+    }
+
+    var body: some View {
+        if #available(iOS 16.0, *) {
+            if let path {
+                NavigationStack(path: path) { content }
+            } else {
+                NavigationStack { content }
+            }
+        } else {
+            NavigationView { content }
+                .navigationViewStyle(.stack)
+        }
+    }
+}
+
+struct FileBrowserValueLink<Label: View, Destination: View>: View {
+    private let value: FileBrowserDestination
+    private let makeDestination: (FileBrowserDestination) -> Destination
+    private let label: Label
+
+    init(
+        value: FileBrowserDestination,
+        makeDestination: @escaping (FileBrowserDestination) -> Destination,
+        @ViewBuilder label: () -> Label
+    ) {
+        self.value = value
+        self.makeDestination = makeDestination
+        self.label = label()
+    }
+
+    var body: some View {
+        if #available(iOS 16.0, *) {
+            NavigationLink(value: value) { label }
+        } else {
+            NavigationLink(destination: makeDestination(value)) { label }
+        }
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func fontWeightCompat(_ weight: Font.Weight) -> some View {
+        if #available(iOS 16.0, *) {
+            self.fontWeight(weight)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func scrollDismissesKeyboardCompat() -> some View {
+        if #available(iOS 16.0, *) {
+            self.scrollDismissesKeyboard(.interactively)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func scrollContentBackgroundHiddenCompat() -> some View {
+        if #available(iOS 16.0, *) {
+            self.scrollContentBackground(.hidden)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func mediumDetentCompat() -> some View {
+        if #available(iOS 16.0, *) {
+            self.presentationDetents([.medium])
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func formStyleGroupedCompat() -> some View {
+        if #available(iOS 16.0, *) {
+            self.formStyle(.grouped)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func compatNavigationDestination<D: View>(
+        @ViewBuilder _ destination: @escaping (FileBrowserDestination) -> D
+    ) -> some View {
+        if #available(iOS 16.0, *) {
+            self.navigationDestination(for: FileBrowserDestination.self, destination: destination)
+        } else {
+            self
+        }
+    }
+}
+
+struct ActivityView: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+}
+
+struct ShareLinkCompat<Label: View>: View {
+    private let item: Any
+    private let label: Label
+    @State private var isPresented = false
+
+    init(item: Any, @ViewBuilder label: () -> Label) {
+        self.item = item
+        self.label = label()
+    }
+
+    var body: some View {
+        if #available(iOS 16.0, *) {
+            ShareLinkOS16(item: item, label: label)
+        } else {
+            Button {
+                isPresented = true
+            } label: {
+                label
+            }
+            .sheet(isPresented: $isPresented) {
+                ActivityView(items: [item])
+            }
+        }
+    }
+}
+
+@available(iOS 16.0, *)
+private struct ShareLinkOS16<Label: View>: View {
+    let item: Any
+    let label: Label
+
+    var body: some View {
+        if let url = item as? URL {
+            ShareLink(item: url) { label }
+        } else if let text = item as? String {
+            ShareLink(item: text) { label }
+        } else {
+            EmptyView()
+        }
+    }
+}
+
+extension Error {
+    var appDescription: String {
+        String(describing: self)
     }
 }
