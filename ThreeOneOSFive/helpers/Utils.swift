@@ -376,3 +376,9 @@ struct ShareLinkCompat<Label: View>: View {
         }
     }
 }
+
+extension Error {
+    var appDescription: String {
+        String(describing: self)
+    }
+}
