@@ -163,29 +163,24 @@ enum AppUpdateChecker {
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
                 return nil
             }
-            let decoded = try JSONDecoder().decode(GitHubRelease.self, from: data)
-            let remote = normalize(decoded.tagName)
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let tagName = json["tag_name"] as? String,
+                  let htmlURLString = json["html_url"] as? String else {
+                return nil
+            }
+            let remote = normalize(tagName)
             guard !remote.isEmpty,
                   isNewer(remote, than: currentVersion),
                   UserDefaults.standard.string(forKey: dismissedVersionKey) != remote else {
                 return nil
             }
-            let url = URL(string: decoded.htmlURL) ?? fallbackURL
+            let url = URL(string: htmlURLString) ?? fallbackURL
             return Offer(version: remote, url: url)
         } catch {
             return nil
         }
     }
 
-    private struct GitHubRelease: Decodable {
-        let tagName: String
-        let htmlURL: String
-
-        enum CodingKeys: String, CodingKey {
-            case tagName = "tag_name"
-            case htmlURL = "html_url"
-        }
-    }
 
     static func normalize(_ version: String) -> String {
         var value = version.trimmingCharacters(in: .whitespacesAndNewlines)
