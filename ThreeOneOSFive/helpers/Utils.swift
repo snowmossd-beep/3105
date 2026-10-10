@@ -151,11 +151,15 @@ enum AppUpdateChecker {
     }
 
     static func check() async -> Offer? {
-        var request = URLRequest(url: apiURL, cachePolicy: .useProtocolCachePolicy, timeoutInterval: 15)
-        request.setValue("3105", forHTTPHeaderField: "User-Agent")
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 15
+        configuration.httpAdditionalHeaders = [
+            "User-Agent": "3105",
+            "Accept": "application/vnd.github+json"
+        ]
+        let session = URLSession(configuration: configuration)
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await session.data(from: apiURL)
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
                 return nil
             }
