@@ -23,7 +23,7 @@ jobs:
         run: |
           xcodebuild \
             -project ThreeOneOSFive.xcodeproj \
-            -target ThreeOneOSFive \
+            -target 3105 \
             -configuration Release \
             -sdk iphoneos \
             CODE_SIGNING_ALLOWED=NO \
@@ -47,4 +47,3 @@ jobs:
           path: 3105-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
-          
