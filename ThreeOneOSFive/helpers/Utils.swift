@@ -366,39 +366,13 @@ struct ShareLinkCompat<Label: View>: View {
     }
 
     var body: some View {
-        if #available(iOS 16.0, *) {
-            ShareLinkOS16(item: item, label: label)
-        } else {
-            Button {
-                isPresented = true
-            } label: {
-                label
-            }
-            .sheet(isPresented: $isPresented) {
-                ActivityView(items: [item])
-            }
+        Button {
+            isPresented = true
+        } label: {
+            label
         }
-    }
-}
-
-@available(iOS 16.0, *)
-private struct ShareLinkOS16<Label: View>: View {
-    let item: Any
-    let label: Label
-
-    var body: some View {
-        if let url = item as? URL {
-            ShareLink(item: url) { label }
-        } else if let text = item as? String {
-            ShareLink(item: text) { label }
-        } else {
-            EmptyView()
+        .sheet(isPresented: $isPresented) {
+            ActivityView(items: [item])
         }
-    }
-}
-
-extension Error {
-    var appDescription: String {
-        String(describing: self)
     }
 }
